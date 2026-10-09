@@ -13,8 +13,8 @@ const GRAY = '595959';
 const LIGHT = 'EEF2F8';
 const CONTENT_W = 11906 - 1440 - 1440; // 9026 DXA
 
+const TOC_PAGES = process.env.TOC_PAGES ? JSON.parse(process.env.TOC_PAGES) : {};
 const content = [
-  ...require('./ch0.js'),
   ...require('./ch1.js'),
   ...require('./ch2.js'),
   ...require('./ch3.js'),
@@ -36,9 +36,9 @@ function heading(level, text) {
   return new Paragraph({
     heading: hl,
     numbering: { reference: 'toc', level: level - 1 },
-    spacing: { before: level === 1 ? 360 : level === 2 ? 240 : 160, after: 100 },
+    spacing: { before: level === 1 ? 200 : level === 2 ? 140 : 100, after: 40 },
     keepNext: true,
-    pageBreakBefore: level === 1,
+    pageBreakBefore: level === 1 && !process.env.NO_H1_BREAK,
     children: [new TextRun({ text, bold: true, font: FONT, size: sizes[level], color: level === 1 ? NAVY : '000000' })],
   });
 }
@@ -55,9 +55,9 @@ function para(text, opts = {}) {
 function bullet(text, level = 0) {
   return new Paragraph({
     numbering: { reference: 'bul', level },
-    spacing: { after: 60, line: 276 },
+    spacing: { after: 30, line: 252 },
     alignment: AlignmentType.BOTH,
-    children: runs(text),
+    children: runs(text, { size: 18 }),
   });
 }
 
@@ -78,7 +78,7 @@ function box(text) {
     indent: { left: 120, right: 120 },
     spacing: { before: 80, after: 160, line: 276 },
     alignment: AlignmentType.BOTH,
-    children: runs(text, { size: 19 }),
+    children: runs(text, { size: 18 }),
   });
 }
 
@@ -88,11 +88,11 @@ function cell(text, { head = false, width, align } = {}) {
     width: { size: width, type: WidthType.DXA },
     verticalAlign: VerticalAlign.CENTER,
     shading: head ? { type: ShadingType.CLEAR, fill: NAVY, color: 'auto' } : undefined,
-    margins: { top: 50, bottom: 50, left: 80, right: 80 },
+    margins: { top: 30, bottom: 30, left: 60, right: 60 },
     children: lines.map((ln) => new Paragraph({
       alignment: head ? AlignmentType.CENTER : (align || AlignmentType.LEFT),
-      spacing: { after: 0, line: 240 },
-      children: runs(ln, { size: 17, bold: head ? true : undefined, color: head ? 'FFFFFF' : undefined }),
+      spacing: { after: 0, line: 230 },
+      children: runs(ln, { size: 15, bold: head ? true : undefined, color: head ? 'FFFFFF' : undefined }),
     })),
   });
 }
@@ -114,7 +114,7 @@ function table(spec) {
       borders: { top: border, bottom: border, left: border, right: border, insideHorizontal: border, insideVertical: border },
       rows,
     }),
-    new Paragraph({ spacing: { after: 60 }, children: [] }),
+    new Paragraph({ spacing: { after: 40 }, children: [] }),
   ];
 }
 
@@ -123,7 +123,7 @@ function render(items) {
   for (const it of items) {
     if (it.h) out.push(heading(it.h, it.t));
     else if (it.p != null) out.push(para(it.p, it.o));
-    else if (it.b) it.b.forEach((x) => out.push(typeof x === 'string' ? bullet(x) : bullet(x.t, x.l || 1)));
+    else if (it.b) it.b.forEach((x) => out.push(typeof x === 'string' ? bullet(x) : bullet(x.t, x.l == null ? 1 : x.l)));
     else if (it.t) out.push(...table(it.t));
     else if (it.note) out.push(note(it.note));
     else if (it.box) out.push(box(it.box));
@@ -133,13 +133,33 @@ function render(items) {
   return out;
 }
 
+function tocPage() {
+  const { PositionalTab, PositionalTabAlignment, PositionalTabLeader, PositionalTabRelativeTo } = require('docx');
+  const out = [new Paragraph({ children: [new PageBreak()] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [new TextRun({ text: '목 차', font: FONT, size: 28, bold: true })] })];
+  let n1 = 0, n2 = 0; const ga = '가나다라마바사아자차카타파하';
+  for (const it of content) {
+    if (!it.h || it.h > 2) continue;
+    let label;
+    if (it.h === 1) { n1++; n2 = 0; label = `${n1}. ${it.t}`; } else { n2++; label = `${ga[n2 - 1]}. ${it.t}`; }
+    const key = `${it.h}:${it.t}`; const pg = TOC_PAGES[key] || '';
+    const { TabStopType, LeaderType } = require('docx');
+    out.push(new Paragraph({ spacing: { after: it.h === 1 ? 60 : 20, before: it.h === 1 ? 120 : 0 }, indent: { left: it.h === 1 ? 0 : 400 },
+      tabStops: [{ type: TabStopType.RIGHT, position: CONTENT_W, leader: LeaderType.DOT }],
+      children: [new TextRun({ text: label, font: FONT, size: it.h === 1 ? 21 : 19, bold: it.h === 1 }),
+        new TextRun({ text: '\t' + String(pg), font: FONT, size: 19 })] }));
+  }
+  out.push(new Paragraph({ children: [new PageBreak()] }));
+  return out;
+}
+
 // ---- title block (양식 준용) ----
 function titleBlock() {
   return [
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200, after: 80 }, children: [new TextRun({ text: '2027년 사업계획 사전조사 보고서 (사업부용)', font: FONT, size: 32, bold: true })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: '제조 AX 분야 — KONAN MAESTRO · 영남권 제조 AX 거점', font: FONT, size: 22, color: NAVY })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: '국방·전략사업부', font: FONT, size: 20 })] }),
-    new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 200 }, children: [new TextRun({ text: '2026. 10. 08.', font: FONT, size: 22 })] }),
+    new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 200 }, children: [new TextRun({ text: '2026. 10. 09.', font: FONT, size: 22 })] }),
   ];
 }
 
@@ -167,8 +187,9 @@ const doc = new Document({
       {
         reference: 'bul',
         levels: [
-          { level: 0, format: LevelFormat.BULLET, text: 'ㅇ', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 400, hanging: 300 } } } },
-          { level: 1, format: LevelFormat.BULLET, text: '-', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 760, hanging: 240 } } } },
+          { level: 0, format: LevelFormat.BULLET, text: '□', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 320, hanging: 300 } } } },
+          { level: 1, format: LevelFormat.BULLET, text: 'ㅇ', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 640, hanging: 280 } } } },
+          { level: 2, format: LevelFormat.BULLET, text: '-', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 920, hanging: 220 } } } },
         ],
       },
     ],
@@ -179,9 +200,9 @@ const doc = new Document({
     },
     headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: '2027년 사업계획 사전조사 — 제조 AX 분야 · 국방·전략사업부 · 내부 보고용', font: FONT, size: 16, color: GRAY })] })] }) },
     footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 18, color: GRAY })] })] }) },
-    children: [...titleBlock(), ...render(content)],
+    children: [...titleBlock(), ...render(require('./ch0.js')), ...tocPage(), ...render(content.filter((it) => !it._front))],
   }],
 });
 
-const outPath = path.resolve(__dirname, '../out/2027_BizPlan_PreSurvey_MfgAX_v1.1.docx');
+const outPath = path.resolve(__dirname, '../out/2027_BizPlan_PreSurvey_MfgAX_v1.2.docx');
 Packer.toBuffer(doc).then((buf) => { fs.writeFileSync(outPath, buf); console.log('written', outPath, buf.length); });
