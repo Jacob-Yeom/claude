@@ -183,5 +183,5 @@ const doc = new Document({
   }],
 });
 
-const outPath = path.resolve(__dirname, '../out/2027_BizPlan_PreSurvey_MfgAX_v1.0.docx');
+const outPath = path.resolve(__dirname, '../out/2027_BizPlan_PreSurvey_MfgAX_v1.1.docx');
 Packer.toBuffer(doc).then((buf) => { fs.writeFileSync(outPath, buf); console.log('written', outPath, buf.length); });
