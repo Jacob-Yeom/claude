@@ -36,7 +36,7 @@ function heading(level, text) {
   return new Paragraph({
     heading: hl,
     numbering: { reference: 'toc', level: level - 1 },
-    spacing: { before: level === 1 ? 200 : level === 2 ? 140 : 100, after: 40 },
+    spacing: { before: level === 1 ? 160 : level === 2 ? 110 : 80, after: 30 },
     keepNext: true,
     pageBreakBefore: level === 1 && !process.env.NO_H1_BREAK,
     children: [new TextRun({ text, bold: true, font: FONT, size: sizes[level], color: level === 1 ? NAVY : '000000' })],
@@ -55,7 +55,7 @@ function para(text, opts = {}) {
 function bullet(text, level = 0) {
   return new Paragraph({
     numbering: { reference: 'bul', level },
-    spacing: { after: 30, line: 252 },
+    spacing: { after: 24, line: 245 },
     alignment: AlignmentType.BOTH,
     children: runs(text, { size: 18 }),
   });
@@ -114,7 +114,7 @@ function table(spec) {
       borders: { top: border, bottom: border, left: border, right: border, insideHorizontal: border, insideVertical: border },
       rows,
     }),
-    new Paragraph({ spacing: { after: 40 }, children: [] }),
+    new Paragraph({ spacing: { after: 20 }, children: [] }),
   ];
 }
 
@@ -159,7 +159,7 @@ function titleBlock() {
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200, after: 80 }, children: [new TextRun({ text: '2027년 사업계획 사전조사 보고서 (사업부용)', font: FONT, size: 32, bold: true })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: '제조 AX 분야 — KONAN MAESTRO · 영남권 제조 AX 거점', font: FONT, size: 22, color: NAVY })] }),
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: '국방·전략사업부', font: FONT, size: 20 })] }),
-    new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 200 }, children: [new TextRun({ text: '2026. 10. 09.', font: FONT, size: 22 })] }),
+    new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 200 }, children: [new TextRun({ text: '2026. 10. 15.', font: FONT, size: 22 })] }),
   ];
 }
 
@@ -204,5 +204,5 @@ const doc = new Document({
   }],
 });
 
-const outPath = path.resolve(__dirname, '../out/2027_BizPlan_PreSurvey_MfgAX_v1.2.docx');
+const outPath = path.resolve(__dirname, '../out/2027_BizPlan_PreSurvey_MfgAX_v1.3.docx');
 Packer.toBuffer(doc).then((buf) => { fs.writeFileSync(outPath, buf); console.log('written', outPath, buf.length); });
