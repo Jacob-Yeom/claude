@@ -4,9 +4,10 @@ const fs = require('fs');
 const META = JSON.parse(fs.readFileSync('img/meta.json'));
 
 const F = '페이퍼로지 6 SemiBold';
-const C = { title: '18334F', sub: '65768A', body: '34485E', card: 'F3F6FA', line: 'CAD6E2', gold: '986D20', gold2: 'D6A756',
-  hl: 'E9A15B', navy: '18334F', teal: '087E81', blue: '187DA5', pale: 'E8F1F8', white: 'FFFFFF' };
-const FOOT = '㈜코난테크놀로지  |  경남인공지능혁신본부 입주신청 사업계획 발표';
+// v7(경남 지사 설립 방안) 팔레트
+const C = { title: '0E2240', sub: '4D6E8E', body: '1F2A37', card: 'F7FAFD', line: 'C9D9E8', gold: 'B8860B', gold2: 'E2B23A',
+  hl: 'B8860B', navy: '0E2240', steel: '3C6791', blue: '4D6E8E', pale: 'E9F2FB', white: 'FFFFFF' };
+const FOOT = '경남인공지능혁신본부 입주신청 · 사업계획 발표 · ㈜코난테크놀로지 · 2026.10';
 
 const pptx = new pptxgen();
 pptx.layout = 'LAYOUT_16x9'; // 10 x 5.625 in
@@ -17,8 +18,18 @@ pptx.theme = { headFontFace: F, bodyFontFace: F };
 let pageNo = 0;
 const T = (s, text, x, y, w, h, o = {}) => s.addText(text, { x, y, w, h, fontFace: F, fontSize: 9.5, color: C.body, valign: 'top', margin: 0, paraSpaceAfter: 2, ...o });
 const icon = (s, n, x, y, sz = 0.42) => s.addImage({ path: `icons/${n}.png`, x, y, w: sz, h: sz });
-const card = (s, x, y, w, h, o = {}) => s.addShape(pptx.ShapeType.roundRect, { x, y, w, h, rectRadius: 0.06,
-  fill: { color: o.fill || C.card }, line: { color: o.hl ? C.hl : (o.line || C.line), width: o.hl ? 1.25 : 0.75 } });
+const card = (s, x, y, w, h, o = {}) => {
+  s.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color: o.hl ? C.pale : (o.fill || 'FFFFFF') }, line: { color: o.line || C.line, width: 0.75 } });
+  if (o.hl) s.addShape(pptx.ShapeType.rect, { x, y, w: 0.04, h, fill: { color: C.gold }, line: { color: C.gold, width: 0 } });
+};
+// v7 섹션 라벨: 금색 세로 바 + 굵은 남색 제목
+const sec = (s, text, x, y, w = 4, note = '') => {
+  s.addShape(pptx.ShapeType.rect, { x, y: y + 0.04, w: 0.035, h: 0.2, fill: { color: C.gold }, line: { color: C.gold, width: 0 } });
+  s.addText([{ text, options: { bold: true, color: C.title, fontSize: 10.5 } }, ...(note ? [{ text: '  ' + note, options: { color: C.sub, fontSize: 8 } }] : [])],
+    { x: x + 0.1, y, w, h: 0.28, fontFace: F, valign: 'middle', margin: 0 });
+};
+// {강조} 구간은 금색으로
+const rich = (str, base, hi) => str.split(/(\{[^}]*\})/).filter(Boolean).map(t => t.startsWith('{') ? { text: t.slice(1, -1), options: { color: hi } } : { text: t, options: { color: base } });
 const bullets = (arr, o = {}) => arr.map((t, i) => {
   if (Array.isArray(t)) return { text: t[0], options: { bullet: { indent: 10 }, ...(t[1] || {}), breakLine: true } };
   return { text: t, options: { bullet: o.plain ? false : { indent: 10 }, breakLine: i < arr.length - 1 } };
@@ -26,10 +37,10 @@ const bullets = (arr, o = {}) => arr.map((t, i) => {
 function body(title, sub, notes) {
   const s = pptx.addSlide(); pageNo++;
   s.background = { color: 'FFFFFF' };
-  T(s, title, 0.5, 0.3, 9, 0.5, { fontSize: 22, bold: true, color: C.title, valign: 'middle' });
-  if (sub) T(s, sub, 0.5, 0.8, 9, 0.28, { fontSize: 10.5, color: C.sub, valign: 'middle' });
-  T(s, FOOT, 0.5, 5.27, 6, 0.2, { fontSize: 7, color: '77869A', valign: 'middle' });
-  T(s, String(pageNo), 9.0, 5.27, 0.5, 0.2, { fontSize: 7.5, color: '77869A', align: 'right', valign: 'middle' });
+  T(s, rich(title, C.title, C.gold), 0.5, 0.32, 9.2, 0.45, { fontSize: 18, bold: true, valign: 'middle' });
+  if (sub) T(s, sub, 0.5, 0.78, 9.2, 0.26, { fontSize: 9.75, color: C.sub, valign: 'middle' });
+  T(s, FOOT, 0.5, 5.3, 6, 0.18, { fontSize: 6.5, color: '8E99A5', valign: 'middle' });
+  T(s, String(pageNo).padStart(2, '0'), 9.0, 5.3, 0.5, 0.18, { fontSize: 6.5, color: '8E99A5', align: 'right', valign: 'middle' });
   if (notes) s.addNotes(notes);
   return s;
 }
@@ -39,26 +50,27 @@ function img3d(s, key, x, y, w) {
   s.addImage({ path: `img/${key}_c.png`, x, y, w, h });
   return (a) => [x + m.a[a][0] / m.w * w, y + m.a[a][1] / m.h * h];
 }
-const tableOpts = (colW, o = {}) => ({ fontFace: F, fontSize: 8, color: C.body, colW, border: { type: 'solid', pt: 0.5, color: C.line }, valign: 'middle', margin: [2, 4, 2, 4], ...o });
-const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { color: 'E8EEF5' }, align: 'center' } });
+const tableOpts = (colW, o = {}) => ({ fontFace: F, fontSize: 8, color: C.body, colW, border: [{ type: 'none' }, { type: 'none' }, { type: 'solid', pt: 0.5, color: C.line }, { type: 'none' }], valign: 'middle', margin: [2, 4, 2, 4], ...o });
+const th = (t) => ({ text: t, options: { bold: true, color: 'FFFFFF', fill: { color: C.steel }, align: 'center' } });
 
 // =============== 1. COVER ===============
 {
   const s = pptx.addSlide(); pageNo++;
   s.background = { path: 'img/cover_bg.jpg' };
-  T(s, 'KONAN TECHNOLOGY', 0.5, 0.5, 4, 0.3, { fontSize: 11, color: C.gold2, bold: true, charSpacing: 4 });
-  s.addShape(pptx.ShapeType.line, { x: 0.5, y: 0.85, w: 0.6, h: 0, line: { color: C.gold2, width: 1.5 } });
-  T(s, '경남인공지능혁신본부 입주신청 · 사업계획 발표', 0.5, 1.45, 6, 0.28, { fontSize: 10.5, color: 'D6B576' });
-  T(s, '제조 특화 온프레미스 생성형AI ·\n암묵지 지식화 플랫폼(Konan Maestro)\n기반 경남권 제조AX 서비스', 0.5, 1.85, 6.2, 1.6, { fontSize: 25, bold: true, color: 'FFFFFF', valign: 'middle', lineSpacingMultiple: 1.05 });
-  T(s, 'Konan LLM    Konan RAG    Konan LLM Studio    STT    온톨로지 · Graph-RAG', 0.5, 3.75, 6, 0.3, { fontSize: 9.75, color: 'C2D1E5' });
-  T(s, '입주 희망 : 경남인공지능혁신본부 입주기업동 4동 703호 (93.79㎡) · 지사', 0.5, 4.05, 6, 0.3, { fontSize: 9.75, color: 'C2D1E5' });
-  T(s, '㈜코난테크놀로지 국방·전략사업부  |  2026. 10', 0.5, 5.0, 6, 0.29, { fontSize: 9, color: 'BACADF' });
+  T(s, '경남인공지능혁신본부 입주신청 · 사업계획 발표 · 2026. 10', 0.55, 0.55, 6, 0.25, { fontSize: 9, color: C.gold2 });
+  T(s, rich('경남권 제조AX\n{Konan Maestro}', 'FFFFFF', C.gold2), 0.55, 1.0, 6.5, 1.5, { fontSize: 36, bold: true, valign: 'middle', lineSpacingMultiple: 1.0 });
+  T(s, '입주신청 사업계획', 0.55, 2.75, 6, 0.3, { fontSize: 12.5, bold: true, color: 'FFFFFF' });
+  T(s, '제조 특화 온프레미스 생성형AI · 암묵지 지식화 플랫폼\n기반 경남권 제조AX 서비스', 0.55, 3.08, 5.0, 0.5, { fontSize: 10.5, bold: true, color: C.gold2 });
+  T(s, '입주 희망 : 경남인공지능혁신본부 입주기업동 4동 703호 (93.79㎡) · 지사', 0.55, 3.68, 5.0, 0.26, { fontSize: 9.5, color: 'B7C3D3' });
+  s.addShape(pptx.ShapeType.rect, { x: 0.55, y: 4.2, w: 0.6, h: 0.03, fill: { color: C.gold2 }, line: { color: C.gold2, width: 0 } });
+  T(s, '㈜코난테크놀로지 국방 · 전략사업부', 0.55, 4.42, 6, 0.28, { fontSize: 11, color: 'FFFFFF' });
+  T(s, 'Business Plan for Gyeongnam AI Innovation HQ', 0.55, 4.72, 6, 0.22, { fontSize: 8, color: '8E99A5' });
   s.addNotes('표지. 코난테크놀로지의 경남인공지능혁신본부 입주신청 사업계획을 15분간 발표드리겠습니다. 사업화 품목은 제조 특화 온프레미스 생성형AI·암묵지 지식화 플랫폼, Konan Maestro 기반 경남권 제조AX 서비스입니다.');
 }
 
 // =============== 2. AGENDA ===============
 {
-  const s = body('발표 개요', '경남 거점에서 무엇을, 누구와, 어떻게 증명할 것인가',
+  const s = body('발표 개요 — {20주 안에 숫자로 증명}하는 경남 제조AX 거점', '경남 거점에서 무엇을, 누구와, 어떻게 증명할 것인가',
     '발표 개요입니다. 핵심 메시지는 네 가지입니다. 국산 Full-Stack AI 기업이고, 경남 현장에서 이미 정부 실증 3건을 수행 중이며, 20주 안에 숫자로 증명하는 Quick Win 전략을 갖고 있고, 지역 청년을 제조AI 인력으로 키우겠다는 것입니다. 순서는 오른쪽과 같습니다.');
   const items = [
     ['chip', '국산 Full-Stack AI 기업', '자체 LLM · RAG · LLMOps · STT를 모두 보유한 27년 업력의 코스닥 상장 AI 전문기업'],
@@ -66,26 +78,29 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
     ['gauge', '20주 안에 숫자로 증명', 'Quick Win A · B로 정확도 · 탐색시간 · 대조시간 KPI를 현장 기준선 대비 실측'],
     ['people', '지역 청년 · 제조AI 인력 양성', '2027년 현지 채용 3명, 본사 교육 후 창원 배치하는 순환 육성 모델'],
   ];
+  card(s, 0.5, 1.15, 9.0, 0.62, { hl: true });
+  T(s, '핵심 메시지', 0.65, 1.15, 0.95, 0.62, { fontSize: 9.5, bold: true, color: C.gold, valign: 'middle' });
+  T(s, '"2026.11 경남사무소 1인 개설, 정부 실증 3건을 현장 상주로 대응하고 Quick Win으로 20주 안에 성과를 수치로 검증 — 2027.7 5인 체제 제조AX기술센터@경남으로 전환한다."', 1.6, 1.15, 7.8, 0.62, { fontSize: 9.5, color: C.title, valign: 'middle' });
   items.forEach(([ic, h, d], i) => {
-    const y = 1.35 + i * 0.9;
-    icon(s, ic, 0.55, y, 0.5);
-    T(s, h, 1.2, y - 0.02, 4.7, 0.3, { fontSize: 12, bold: true, color: C.title });
-    T(s, d, 1.2, y + 0.29, 4.7, 0.45, { fontSize: 9.5 });
+    const y = 2.0 + i * 0.8;
+    icon(s, ic, 0.55, y, 0.48);
+    T(s, h, 1.2, y - 0.02, 4.8, 0.28, { fontSize: 11, bold: true, color: C.title });
+    T(s, d, 1.2, y + 0.27, 4.8, 0.42, { fontSize: 9 });
   });
-  card(s, 6.3, 1.25, 3.2, 3.75, { hl: true, fill: 'F3F6FA' });
-  T(s, '발표 순서', 6.55, 1.4, 2.8, 0.3, { fontSize: 12, bold: true, color: C.title });
+  card(s, 6.3, 1.95, 3.2, 3.15, { fill: C.card });
+  sec(s, '발표 순서', 6.45, 2.05, 2.8);
   const ag = ['입주 신청 개요', '신청기업 현황 · 실적', '사업화 품목 및 기술 경쟁력', '시장 · 수요처 · 경쟁 현황', '개발 및 사업화 추진계획', '매출 · 판매전략', '청년고용 · 소요자금'];
   ag.forEach((t, i) => {
-    const y = 1.85 + i * 0.43;
-    s.addShape(pptx.ShapeType.ellipse, { x: 6.58, y: y + 0.02, w: 0.24, h: 0.24, fill: { color: 'FFFFFF' }, line: { color: C.line, width: 0.75 } });
-    T(s, String(i + 1), 6.58, y + 0.02, 0.24, 0.24, { fontSize: 8, color: C.title, align: 'center', valign: 'middle' });
+    const y = 2.42 + i * 0.37;
+    s.addShape(pptx.ShapeType.ellipse, { x: 6.58, y: y + 0.02, w: 0.24, h: 0.24, fill: { color: C.navy }, line: { color: C.navy, width: 0.75 } });
+    T(s, String(i + 1), 6.58, y + 0.02, 0.24, 0.24, { fontSize: 8, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle' });
     T(s, t, 6.95, y, 2.4, 0.28, { fontSize: 9.5, color: C.body, valign: 'middle' });
   });
 }
 
 // =============== 3. 입주 신청 개요 ===============
 {
-  const s = body('입주 신청 개요', '경남인공지능혁신본부 입주기업동 4동 703호 — 경남 제조AX 현장 거점',
+  const s = body('입주 신청 개요 — 4동 703호, {경남 제조AX 현장 거점}', '경남인공지능혁신본부 입주기업동 4동 703호 — 경남 제조AX 현장 거점',
     '입주 신청 개요입니다. 2025년 매출 339억 원, 종업원 194명, 등록특허 18건, GS 1등급 14개 제품을 보유하고 있습니다. 입주 희망 공간은 4동 703호 93.79제곱미터, 지사 형태이며, 입주 시 1명으로 시작해 2027년 파견 2명과 현지 채용 3명으로 5명 체제로 확대합니다.');
   const k = [['1999.04', '법인 설립 (업력 27년)'], ['339.8억 원', '2025년 매출액'], ['194명', '종업원 (AI 인력 139명)'], ['18건', '등록특허'], ['14개', 'GS 1등급 인증 제품'], ['2022.07', '코스닥 상장 (402030)']];
   k.forEach(([v, l], i) => {
@@ -101,13 +116,13 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
     ['사업화 품목', '제조 특화 온프레미스 생성형AI · 암묵지 지식화 플랫폼(Konan Maestro) 기반 경남권 제조AX 서비스'],
     ['사업 분야', '인공지능 소프트웨어 (제조AX · 생성형AI · RAG · 온톨로지/지식그래프 · 음성인식)'],
   ];
-  s.addTable(rows.map(([a, b]) => [{ text: a, options: { bold: true, color: C.title, fill: { color: 'E8EEF5' }, align: 'center' } }, { text: b }]),
+  s.addTable(rows.map(([a, b]) => [{ text: a, options: { bold: true, color: C.title, fill: { color: C.card }, align: 'center' } }, { text: b }]),
     { x: 0.5, y: 2.6, ...tableOpts([1.6, 7.4], { fontSize: 9.5, rowH: 0.42 }) });
 }
 
 // =============== 4. 경영진 · 주주 ===============
 {
-  const s = body('Ⅰ. 신청기업 현황 — 대표자 · 경영진 · 주주', '연구소 출신 창업자와 박사급 경영진, 전략적 투자자(SK텔레콤 · KAI) 참여',
+  const s = body('Ⅰ. 기업 현황 ① — {박사급 경영진}과 전략적 투자자(SK텔레콤 · KAI)', '연구소 출신 창업자와 박사급 경영진, 전략적 투자자(SK텔레콤 · KAI) 참여',
     '신청기업 현황입니다. 대표이사는 한양대 전산학 박사로 ETRI와 미국 Bellcore를 거쳐 1999년 창업했습니다. COO, CTO 모두 박사급이며, 주주 구성에 SK텔레콤과 한국항공우주산업이 전략적 투자자로 참여하고 있어, KAI 등 경남 앵커기업과의 협력 기반이 있습니다.');
   card(s, 0.5, 1.25, 4.4, 1.55, { hl: true });
   icon(s, 'usercheck', 0.65, 1.38, 0.5);
@@ -122,14 +137,14 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
     T(s, `${n}   ${e}`, 1.25, y + 0.08, 3.55, 0.24, { fontSize: 9.5, bold: true, color: C.title });
     T(s, c, 1.25, y + 0.33, 3.55, 0.22, { fontSize: 8.5 });
   });
-  T(s, '주주 구성', 5.3, 1.25, 4, 0.3, { fontSize: 12, bold: true, color: C.title });
+  sec(s, '주주 구성', 5.3, 1.25, 4);
   const sh = [['김영섬 (CEO)', 22.88], ['SK텔레콤㈜', 18.85], ['한국항공우주산업㈜', 7.1], ['양승현 (COO)', 6.72], ['윤덕호 (연구위원)', 4.84]];
   const etc = +(100 - sh.reduce((a, b) => a + b[1], 0)).toFixed(2);
   s.addChart(pptx.ChartType.doughnut, [{ name: '지분율', labels: [...sh.map(a => a[0]), '기타(주주명부)'], values: [...sh.map(a => a[1]), etc] }], {
     x: 5.2, y: 1.55, w: 2.2, h: 2.2, holeSize: 62, showLegend: false, showValue: false, showPercent: false, dataLabelColor: 'FFFFFF',
-    chartColors: ['18334F', 'C8963C', '187DA5', '3D617C', '77869A', 'D9E2EC'], dataBorder: { pt: 1, color: 'FFFFFF' } });
+    chartColors: ['0E2240', 'B8860B', '3C6791', '4D6E8E', '9FB4CC', 'DDE9F4'], dataBorder: { pt: 1, color: 'FFFFFF' } });
   T(s, '코스닥\n402030', 5.2, 2.4, 2.2, 0.5, { fontSize: 9, color: C.title, align: 'center', valign: 'middle', bold: true });
-  const cols = ['18334F', 'C8963C', '187DA5', '3D617C', '77869A', 'D9E2EC'];
+  const cols = ['0E2240', 'B8860B', '3C6791', '4D6E8E', '9FB4CC', 'DDE9F4'];
   [...sh, ['기타 (주주명부 별첨)', etc]].forEach(([n, v], i) => {
     const y = 1.62 + i * 0.33;
     s.addShape(pptx.ShapeType.rect, { x: 7.55, y: y + 0.07, w: 0.14, h: 0.14, fill: { color: cols[i] }, line: { color: cols[i] } });
@@ -144,7 +159,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 5. 연혁 · 인력 · 인프라 ===============
 {
-  const s = body('Ⅰ. 신청기업 현황 — 연혁 · 기술인력 · 인프라', '자연어처리 원천기술에서 제조AX 전문기업으로 — 27년의 축적',
+  const s = body('Ⅰ. 기업 현황 ② — {27년} 원천기술 축적, 석 · 박사 65명 · DGX H100 9대', '자연어처리 원천기술에서 제조AX 전문기업으로 — 27년의 축적',
     '연혁입니다. 1999년 자연어처리·검색·영상AI 원천기술로 출발해, 2007년부터 실시간 AI 분석 서비스 펄스K로 250억 건 이상의 한국어 데이터를 확보했습니다. 2022년 코스닥 상장, 2025년 AI+ 인증, 2026년에는 M.AX 전문기업 등록과 정부 실증사업 3건 선정이 이어졌습니다. 기술인력은 석·박사 65명, 인프라는 NVIDIA DGX H100 9대를 보유하고 있습니다.');
   const ms = [['1999.04', '법인 설립', '자연어처리·검색·영상AI'], ['2007~', '펄스K 운영', '한국어 데이터 250억 건+'], ['2022.07', '코스닥 상장', 'GS 1등급 Konan Search6'], ['2023.05', '메인비즈 인증', 'SP 2등급(2023.11)'],
     ['2025.08', 'Konan RAG-X V3', 'GS 1등급 인증'], ['2025.12', 'AI+ 인증', 'Konan-LLM-ENT-11'], ['2026.07', 'M.AX 전문기업', '포항 AX 실증산단 선정'], ['2026', '정부 실증 선정', '중기부 신속상용화 · 피지컬AI']];
@@ -162,7 +177,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
   T(s, '기술인력 현황', 1.12, 2.9, 3, 0.3, { fontSize: 11, bold: true, color: C.title });
   const ed = [['박사', 9], ['석사', 56], ['학사', 117], ['전문대', 11], ['고졸 이하', 2]];
   s.addChart(pptx.ChartType.bar, [{ name: '학력별', labels: ed.map(a => a[0]), values: ed.map(a => a[1]) }], {
-    x: 0.6, y: 3.3, w: 2.2, h: 1.7, barDir: 'bar', chartColors: ['3D617C'], catAxisLabelFontSize: 7.5, catAxisLabelFontFace: F, valAxisHidden: true, valGridLine: { style: 'none' },
+    x: 0.6, y: 3.3, w: 2.2, h: 1.7, barDir: 'bar', chartColors: ['3C6791'], catAxisLabelFontSize: 7.5, catAxisLabelFontFace: F, valAxisHidden: true, valGridLine: { style: 'none' },
     showValue: true, dataLabelFontSize: 7.5, dataLabelFontFace: F, dataLabelColor: C.title, catAxisLabelColor: C.body, barGapWidthPct: 45, catAxisOrientation: 'maxMin' });
   T(s, bullets(['종업원 194명 (정규 188 · 계약 6)', 'AI 인력 139명, 청년(만15~34세) 34%', 'CTO 최정주 — 연구개발 총괄', '김만수 상무 — PHM · 디지털트윈 · 이상탐지', '강현수 이사 — AI 엔진 · LLM 연구개발', '제조AX 전담 5명 (책임 · 선임 · 전임)', '동업계 15~34년 경력 연구인력 다수']), 2.85, 3.3, 2.0, 1.7, { fontSize: 7.5 });
   // 인프라
@@ -178,7 +193,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 6. 기술개발 및 사업화 실적 ===============
 {
-  const s = body('Ⅰ. 신청기업 현황 — 기술개발 및 사업화 실적', '경남(창원 · 사천) 제조 현장에서 이미 진행 중인 실증 · 구축 사업',
+  const s = body('Ⅰ. 기업 현황 ③ — 실적은 이미 {경남 제조 현장}에 있다', '경남(창원 · 사천) 제조 현장에서 이미 진행 중인 실증 · 구축 사업',
     '기술개발 및 사업화 실적입니다. 창원 영풍전자와 방산 전자회로기판 고장탐구 AI를 대표 공급기업으로 수행 중이고, 포항 스마트그린산단 AX 실증, 경남 뿌리기업 13개사 피지컬AI, 사천 KAI PHM DB 구축, 창원 세아창원특수강 이상탐지까지, 경남 현장 경험이 축적돼 있습니다.');
   const pr = [
     ['중기부 AI 응용제품 신속상용화', '영풍전자 컨소시엄 · 애버커스 · 국립창원대 · 경남TP', '2026~2027.07', '대표 공급기업', '방산 전자회로기판(PBA) 고장탐구 암묵지 온톨로지 · Graph-RAG · 온프레미스 LLM 자산화', '고장 원인 분석시간 50% · 보고서 작성시간 70% 단축 목표, 종료 후 2년 내 방산 전자 신규 고객 5개사', '창원', true],
@@ -201,7 +216,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 7. 정책자금 수혜 현황 ===============
 {
-  const s = body('Ⅰ. 신청기업 현황 — 정책자금 수혜 현황', '2026년 신규 선정 3건 포함, 국방 · 제조 · AI 원천 분야 정부과제 9건 수행 중  (단위 : 천원)',
+  const s = body('Ⅰ. 기업 현황 ④ — 정부과제 {9건} 수행 중, 2026년 신규 3건', '2026년 신규 선정 3건 포함, 국방 · 제조 · AI 원천 분야 정부과제 9건 수행 중  (단위 : 천원)',
     '정책자금 수혜 현황입니다. 2026년에만 중기부 18억, 산업부 12억, 과기정통부 피지컬AI 80억 규모의 과제가 신규 선정됐고, 국방 인공지능 핵심기술, 무인기 탑재 AI 파일럿, 드론 통합임무 등 국방 분야 과제도 함께 수행하고 있습니다. 신용보증 수혜는 없습니다.');
   const rows = [
     ['AI 응용제품 신속상용화', '방산 전자PBA 고장탐구 암묵지AI 실증 (영풍전자 컨소시엄)', '중소벤처기업부', '1,830,000', '2026.07', '~2027.07'],
@@ -214,7 +229,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
     ['드론 통합임무 모듈 · 통합 GCS', '드론 통합임무 모듈 및 통합 GCS 기술 개발', '국방기술진흥연구소', '310,000 (26년도분)', '2025', '~2028.12'],
     ['XAI+ 플러그앤플레이', '설명가능성 제공 인공지능 기술 및 설명 제공 검증', '과학기술정보통신부', '626,000 (26년도분)', '2022', '~2026.12'],
   ];
-  const hlRow = (r, i) => r.map((c, j) => ({ text: c, options: { fill: { color: i < 3 ? 'FDF6EC' : 'FFFFFF' }, bold: i < 3 && (j === 0 || j === 3), color: i < 3 && j === 3 ? C.gold : C.body, align: j >= 3 ? 'center' : 'left' } }));
+  const hlRow = (r, i) => r.map((c, j) => ({ text: c, options: { fill: { color: i < 3 ? 'FBF5E6' : 'FFFFFF' }, bold: i < 3 && (j === 0 || j === 3), color: i < 3 && j === 3 ? C.gold : C.body, align: j >= 3 ? 'center' : 'left' } }));
   s.addTable([[th('사업명'), th('과제명'), th('지원기관'), th('금액'), th('선정'), th('진행')], ...rows.map(hlRow)],
     { x: 0.5, y: 1.22, ...tableOpts([2.05, 3.05, 1.35, 1.2, 0.68, 0.67], { fontSize: 8, rowH: 0.37 }) });
   T(s, '※ 음영 = 2026년 신규 선정 경남 · 제조 실증 과제, 9건 모두 수행 중. 신용보증 수혜 없음', 0.5, 5.0, 9, 0.22, { fontSize: 7.5, color: C.sub });
@@ -222,7 +237,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 8. 사업화 품목 ===============
 {
-  const s = body('Ⅱ. 사업화 품목 — Konan Maestro', '제조 특화 온프레미스 생성형AI · 암묵지 지식화 플랫폼 (국산 Full-Stack)',
+  const s = body('Ⅱ. 사업화 품목 — {Konan Maestro}, 국산 Full-Stack 제조AI', '제조 특화 온프레미스 생성형AI · 암묵지 지식화 플랫폼 (국산 Full-Stack)',
     '사업화 품목 Konan Maestro입니다. 자체 Foundation LLM, 자체 형태소 분석기 기반 RAG, LLMOps·RAGOps 통합 플랫폼, 음성인식 엔진을 모두 자체 보유한 Full-Stack 구조입니다. 그 위에 설비 매뉴얼, 정비이력, 작업일지, 도면, 숙련자의 암묵지를 온톨로지와 지식그래프로 자산화하고, 폐쇄망에서 생성형AI로 활용합니다.');
   const at = img3d(s, 'stack', 0.35, 1.2, 3.55);
   const lay = [['Konan LLM', 'ENT-13(32B) · ENT-20 · PRO-10 · PRO-20 자체 Foundation 모델, 온프레미스 · 폐쇄망'],
@@ -248,7 +263,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 9. 경쟁제품 대비 개선점 · 기술/품질 경쟁력 ===============
 {
-  const s = body('Ⅱ. 기술 경쟁력 — 경쟁제품 대비 개선점', '외산 · 클라우드 LLM이 해결하지 못하는 제조 현장의 4가지 요구',
+  const s = body('Ⅱ. 기술 경쟁력 — 외산 · 클라우드 LLM 대비 {4가지 개선점}', '외산 · 클라우드 LLM이 해결하지 못하는 제조 현장의 4가지 요구',
     '경쟁제품 대비 개선점은 네 가지입니다. 기밀 데이터를 외부로 내보내지 않는 온프레미스 운영, 출처 표시로 안전·품질사고로 이어질 수 있는 환각을 방지, 자체 형태소 분석기로 설비명·부품명 같은 제조 복합명사를 정확히 인식, 그리고 토큰은 많이 파라미터는 작게 전략으로 중소·중견기업도 도입 가능한 비용입니다. 하단은 이를 뒷받침하는 정량 지표와 품질 인증입니다.');
   const pts = [['lock', '① 기밀 데이터 외부 유출 없음', '외산 · 클라우드 LLM과 달리 온프레미스 · 폐쇄망 운영'],
     ['docsearch', '② 출처 표시(Citation) 기반 답변', '안전 · 품질사고로 직결될 수 있는 할루시네이션 방지'],
@@ -261,7 +276,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
     T(s, h, x + 0.12, 1.9, 1.95, 0.3, { fontSize: 9.5, bold: true, color: C.title });
     T(s, d, x + 0.12, 2.2, 1.95, 0.55, { fontSize: 8 });
   });
-  T(s, '기술 경쟁력', 0.5, 2.98, 3, 0.28, { fontSize: 11, bold: true, color: C.title });
+  sec(s, '기술 경쟁력', 0.5, 2.98, 3);
   const kp = [['250억 건+', '펄스K 확보 데이터\n(양질 약 20억 건 학습)'], ['600만 개', '자체 형태소 분석기\n엔트리'], ['10억 건+', '대규모 문서\n벡터검색'], ['5GB / 시간', '2 Core 서버 인덱싱\n초당 50건 질의 처리'], ['1.5~10배', '타 엔진 대비\n서버당 처리량']];
   kp.forEach(([v, l], i) => {
     const x = 0.5 + i * 1.22;
@@ -277,7 +292,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 10. 국내외 동향 · 포지셔닝 ===============
 {
-  const s = body('Ⅲ. 국내외 관련기술 현황', '제조AI의 무게중심이 「현장 문서 · 암묵지의 지식화」와 「에이전트 기반 업무 자동화」로 이동',
+  const s = body('Ⅲ. 관련기술 현황 — 제조AI의 무게중심이 {현장 지식 · 암묵지}로 이동', '제조AI의 무게중심이 「현장 문서 · 암묵지의 지식화」와 「에이전트 기반 업무 자동화」로 이동',
     '국내외 동향입니다. 제조AI는 대기업의 예지보전·품질관리와 중소기업의 기초 디지털화로 양극화돼 있고, 생성형AI 적용은 현장 문서와 암묵지의 지식화, 에이전트 기반 자동화로 이동하고 있습니다. 국내에서는 산업부 M.AX, 과기정통부 피지컬AI, 경남도 마스터플랜과 창원시의 제조AI 전환 원년 선언이 이어지고 있습니다. 당사는 설비·클라우드·범용LLM 사이의 빈자리인 지식·암묵지 계층에 집중합니다.');
   card(s, 0.5, 1.25, 4.6, 1.75);
   icon(s, 'globe', 0.62, 1.35, 0.42);
@@ -288,9 +303,9 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
   T(s, '국내 동향', 1.12, 3.25, 3, 0.3, { fontSize: 11, bold: true, color: C.title });
   T(s, bullets(['산업통상부 「제조업AI 대전환(M.AX)」: 얼라이언스 1,000여 개 산학연, 2030년까지 AI 팩토리 500개', '과기정통부 피지컬AI 연구개발(총 6,763억 원, 2026~2030), 창원 착수 · 경남 12개 제조사 실증', '경남도 「2026~2030 AI 산업 마스터플랜」: 제조AI 특화기업 100곳, AI 혁신공장 4,000개, 2026 경남 제조AI 데이터센터', '창원시 「2026년 제조AI 전환 원년」, 창원국가산단 구조고도화(피지컬AI 실증 선도 제조거점)']), 0.62, 3.62, 4.4, 1.4, { fontSize: 8 });
   // positioning
-  T(s, '국내 AI 기업 포지셔닝', 5.4, 1.25, 4, 0.3, { fontSize: 11, bold: true, color: C.title });
+  sec(s, '국내 AI 기업 포지셔닝', 5.4, 1.25, 4);
   s.addImage({ path: 'img/graph_c.png', x: 7.65, y: 1.5, w: 1.85, h: 1.85 * META.graph.h / META.graph.w });
-  const pos = [['설비 · 공정 데이터 기반 최적화', '마키나락스 등', 'E8EEF5'], ['클라우드 · 시스템 통합', '메가존 · LG CNS 등', 'E8EEF5'], ['범용 LLM', '솔트룩스 · 와이즈넛 등', 'E8EEF5'], ['지식 · 암묵지 계층', '코난테크놀로지 — 자체 LLM + RAG + 온톨로지/지식그래프 + 온프레미스', 'FDF0DD']];
+  const pos = [['설비 · 공정 데이터 기반 최적화', '마키나락스 등', C.pale], ['클라우드 · 시스템 통합', '메가존 · LG CNS 등', C.pale], ['범용 LLM', '솔트룩스 · 와이즈넛 등', C.pale], ['지식 · 암묵지 계층', '코난테크놀로지 — 자체 LLM + RAG + 온톨로지/지식그래프 + 온프레미스', 'FBF5E6']];
   pos.forEach(([a, b, f], i) => {
     const y = 1.62 + i * 0.62, me = i === 3;
     s.addShape(pptx.ShapeType.roundRect, { x: 5.4, y, w: me ? 4.1 : 2.15, h: 0.52, rectRadius: 0.05, fill: { color: f }, line: { color: me ? C.hl : C.line, width: me ? 1.25 : 0.5 } });
@@ -303,7 +318,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 11. 시장규모 ===============
 {
-  const s = body('Ⅲ. 사업성 — 국내외 시장규모 및 특성', '2026~2030년 영남권에 조 단위 제조AI 공적 예산 집행 — 경남 · 창원이 핵심 실증 무대',
+  const s = body('Ⅲ. 사업성 ① — 제조AX 예산이 {영남 · 경남}에 집중된다', '2026~2030년 영남권에 조 단위 제조AI 공적 예산 집행 — 경남 · 창원이 핵심 실증 무대',
     '시장 규모입니다. 글로벌 제조AI 시장은 2025년 85.7억 달러에서 2035년 2,872억 달러로 연평균 40%대 성장이 전망됩니다. 국내는 M.AX 정책과 피지컬AI, 실증산단, 거제·부산 공모 등 영남권에 2030년까지 조 단위 공적 예산이 집행되며, 경남·창원은 그 핵심 실증 무대입니다. 실증사업은 앵커기업, 지역 대학·TP, AI 공급기업 컨소시엄 구조이고, 보안 요건으로 온프레미스 수요가 높습니다.');
   const at = img3d(s, 'mkt', 0.75, 1.62, 1.9);
   const [x0, y0] = at('T0'), [x1, y1] = at('T1');
@@ -331,7 +346,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 12. 주요 수요처 ===============
 {
-  const s = body('Ⅲ. 사업성 — 국내 주요 수요처 현황', '창원 · 사천 · 거제 · 포항 · 부산 — 거점 반경 내에 등대고객과 실증 현장이 집중',
+  const s = body('Ⅲ. 사업성 ② — 등대고객과 실증 현장은 {거점 반경 내}에 있다', '창원 · 사천 · 거제 · 포항 · 부산 — 거점 반경 내에 등대고객과 실증 현장이 집중',
     '주요 수요처입니다. 창원의 영풍전자, 세아창원특수강, 두산에너빌리티 등 피지컬AI 실증 기업, 사천의 KAI, 거제의 조선 협력사, 포항 동국제강, 그리고 발전사와 서연이화까지, 거점 반경 내에 등대고객과 실증 현장이 모여 있습니다. 경남 거점은 이들을 출장이 아니라 상주 인력으로 대응하기 위한 것입니다.');
   const at = img3d(s, 'hub', 0.4, 1.5, 4.1);
   const [cx, cy] = at('C');
@@ -357,9 +372,16 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
     { x: 4.7, y: 1.22, ...tableOpts([1.5, 0.95, 1.85, 0.5], { fontSize: 7.3, rowH: 0.47 }) });
 }
 
+// =============== 12-2. 접근성 맵 (v7 자료 재사용) ===============
+{
+  const s = body('Ⅲ. 사업성 ③ — 창원(봉암동) 거점에서 {2시간 이내} 방산 · 국가산단 접근', '경남인공지능혁신본부(창원 봉암동) 기준 자차 이동시간 30분 단위 권역  (출처 : 경남(창원) 지사 설립 방안, 2026.09)',
+    '거점 접근성입니다. 경남인공지능혁신본부가 있는 창원 봉암동을 기준으로, 창원 국가산단 방산 클러스터는 10~15분, KAI 사천과 거제 한화오션, 부산, 포항 철강 국가산단까지 모두 2시간 이내입니다. 서울에서 출장으로 대응하던 현장을 당일 왕복 권역으로 바꾸는 것이 입주의 핵심 효과입니다.');
+  s.addImage({ path: 'img/map.png', x: 0.95, y: 1.12, w: 8.1, h: 8.1 * 1880 / 3700 });
+}
+
 // =============== 13. 경쟁 · 가격 ===============
 {
-  const s = body('Ⅲ. 사업성 — 동종업체 현황 및 가격 경쟁력', '대형 경쟁사의 창원 진출 속에서 「국산 Full-Stack · 온프레미스 · 합리적 비용」으로 차별화',
+  const s = body('Ⅲ. 사업성 ④ — 경쟁사는 창원에 왔다, 차별화는 {국산 Full-Stack}', '대형 경쟁사의 창원 진출 속에서 「국산 Full-Stack · 온프레미스 · 합리적 비용」으로 차별화',
     '동종업체 현황입니다. 마키나락스, 메가존, LG CNS 등 대형 기업들이 2026년 창원에 거점을 개소하거나 설립 예정입니다. 당사는 가격 측면에서 토큰 과금 없는 온프레미스 라이선스, 엣지 GPU 1~2기 수준의 운영 비용, 고효율 RAG, 단계형 패키지와 정부 매칭, 그리고 GS 1등급 인증 국산 Full-Stack으로 공공 수의계약이 가능하다는 점에서 경쟁력이 있습니다.');
   const rows = [
     ['마키나락스', '설비 · 공정 데이터 기반 산업AI(런웨이)', '-', '서울 / 2026.08 「AI스튜디오@창원」 개소'],
@@ -367,14 +389,14 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
     ['LG CNS · LG AI연구원', '엑사원LLM, 제조DX', '-', '서울 / 피지컬AI 협력기업, LG전자 연구센터 창원대 설립 예정'],
     ['㈜코난테크놀로지 (당사)', '자체LLM · RAG · 온톨로지/지식그래프 · 온프레미스 생성형AI', '33,979백만원\n(2025)', '서울 본사 / 경남 창원 거점 신설 (본 신청)'],
   ];
-  s.addTable([[th('업체명'), th('주생산품'), th('매출액 규모'), th('소재지 · 경남권 활동')], ...rows.map((r, i) => r.map((c, j) => ({ text: c, options: { bold: j === 0, color: i === 3 ? C.gold : (j === 0 ? C.title : C.body), fill: { color: i === 3 ? 'FDF6EC' : 'FFFFFF' }, align: j === 2 ? 'center' : 'left' } })))],
+  s.addTable([[th('업체명'), th('주생산품'), th('매출액 규모'), th('소재지 · 경남권 활동')], ...rows.map((r, i) => r.map((c, j) => ({ text: c, options: { bold: j === 0, color: i === 3 ? C.gold : (j === 0 ? C.title : C.body), fill: { color: i === 3 ? 'FBF5E6' : 'FFFFFF' }, align: j === 2 ? 'center' : 'left' } })))],
     { x: 0.5, y: 1.22, ...tableOpts([1.9, 2.75, 1.15, 3.2], { fontSize: 8, rowH: 0.36 }) });
   const pr = [['transfer', '외산 · 클라우드LLM 대비', '토큰 과금 없는 온프레미스 라이선스, 사용량 증가에 따른 비용 폭증 · 기밀 유출 리스크 비용 없음'],
     ['chip', '「토큰은 많이, 파라미터는 작게」', '32B 이하 고효율 모델로 엣지 GPU 1~2기 수준 인프라 운영, 중소 · 중견기업 도입 가능'],
     ['server', '고성능 · 고효율 RAG', '2 Core 서버 시간당 5GB 인덱싱 · 초당 50건, 타 엔진 대비 1.5~10배 서버당 처리량'],
     ['calendar', '단계형 패키지', 'Quick Win(소규모 PoC) → Standard(통합 플랫폼) → 카세트형 모듈 구독(SaaS), 정부 실증 매칭'],
     ['shield', '국산 Full-Stack', '외산 모델 라이선스 · 로열티 없음, GS 1등급 인증 제품으로 공공 · 공기업 수의계약(조달) 가능']];
-  T(s, '가격 경쟁력', 0.5, 3.2, 3, 0.28, { fontSize: 11, bold: true, color: C.title });
+  sec(s, '가격 경쟁력', 0.5, 3.2, 3);
   pr.forEach(([ic, h, d], i) => {
     const x = 0.5 + i * 1.82;
     card(s, x, 3.52, 1.72, 1.55, { hl: i === 1 });
@@ -386,7 +408,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 14. 추진 체계 · 단계별 계획 ===============
 {
-  const s = body('Ⅳ. 개발 및 사업화 추진계획 — 2단계 추진 체계', '1단계 「경남사무소」 → 2단계 「(가칭) 제조AX기술센터@경남」 지점 등기 전환 (2027.7 목표)',
+  const s = body('Ⅳ. 추진계획 ① — {2026.11} 1인 개설 → {2027.7} 제조AX기술센터 전환', '1단계 「경남사무소」 → 2단계 「(가칭) 제조AX기술센터@경남」 지점 등기 전환 (2027.7 목표)',
     '추진 계획입니다. 2026년 4분기에 1인 경남사무소로 개설하고, 2027년 6월 성과 검증 후 7월에 5인 체제 제조AX기술센터로 지점 등기 전환합니다. 전환 조건은 유상계약 누적 3.7억 원, 파이프라인 15억 원, 지역 공모 제안 2건, 등대고객 3개사 PoC 중 3개 충족입니다. 2027년 거점 증분 매출 8.5억, 2028년 18억 원이 목표입니다.');
   const at = img3d(s, 'steps', 0.35, 1.25, 3.4);
   const st = [['2026 4Q', '개설 (1인)'], ['2027', '확장 (5인)'], ['2028', '정착 (5인+)']];
@@ -411,7 +433,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 15. Quick Win · 기술개발 · 지역협력 ===============
 {
-  const s = body('Ⅳ. 개발 및 사업화 추진계획 — 시장 공략 방안', 'Quick Win A · B로 20주 안에 숫자로 증명 — 한 번 만든 코어를 업종 · 지역으로 수평 확산',
+  const s = body('Ⅳ. 추진계획 ② — Quick Win A · B로 {20주 안에 숫자로 증명}', 'Quick Win A · B로 20주 안에 숫자로 증명 — 한 번 만든 코어를 업종 · 지역으로 수평 확산',
     '시장 공략 방안입니다. Quick Win A는 12주 동안 숙련자 노하우·SOP 지식 어시스턴트로 정확도 85%, 탐색시간 40% 단축을 목표로 하고, Quick Win B는 7주차에 병행 착수해 20주 안에 원청 규격·도면 대조 검토를 추출 재현율 90%, 검토시간 50% 단축으로 검증합니다. 착수 2주 안에 현행 기준선을 실측하고 같은 방법으로 재측정합니다. 가드레일은 틀릴 때 틀렸다고 말하는 설계입니다.');
   // gantt
   const gx = 0.5, gw = 5.4, wk = gw / 20;
@@ -419,7 +441,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
   [7, 12, 20].forEach(w => T(s, `${w}주`, gx + w * wk - 0.2, 1.22, 0.4, 0.2, { fontSize: 7, color: C.sub, align: 'center' }));
   s.addShape(pptx.ShapeType.line, { x: gx, y: 1.45, w: gw, h: 0, line: { color: C.line, width: 0.75 } });
   const bars = [['Quick Win A  |  숙련자 노하우 · SOP 지식 어시스턴트', 0, 12, C.navy, 'SOP · 작업표준 · 숙련자 노하우 · 이력을 근거로 출처와 함께 답하는 현장 Q&A', '정확도 85% 이상 · 탐색시간 40% 단축 · 반장 문의 30% 감소 · 활성률 60% 이상'],
-    ['Quick Win B  |  원청 규격 · 도면 대조 검토', 6, 20, 'C8963C', '원청 도면 · 사양서와 사내 검사기준 자동 대조, 최종 판단은 담당자 승인', '추출 재현율 90% 이상 · 탐지율 85% 이상 · 오탐 30% 이하 · 검토시간 50% 단축']];
+    ['Quick Win B  |  원청 규격 · 도면 대조 검토', 6, 20, 'B8860B', '원청 도면 · 사양서와 사내 검사기준 자동 대조, 최종 판단은 담당자 승인', '추출 재현율 90% 이상 · 탐지율 85% 이상 · 오탐 30% 이하 · 검토시간 50% 단축']];
   bars.forEach(([n, a, b, col, d, k], i) => {
     const y = 1.6 + i * 1.05;
     s.addShape(pptx.ShapeType.roundRect, { x: gx + a * wk, y, w: (b - a) * wk, h: 0.3, rectRadius: 0.05, fill: { color: col }, line: { color: col } });
@@ -446,7 +468,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 16. 매출 · 판매전략 ===============
 {
-  const s = body('Ⅴ. 매출실적 및 판매계획 · 판매전략', '정부 실증 → 카탈로그 등재 → 앵커기업 협력사 수평 확산',
+  const s = body('Ⅴ. 매출 · 판매전략 — 거점 증분 매출 {2027년 8.5억 → 2028년 18억}', '정부 실증 → 카탈로그 등재 → 앵커기업 협력사 수평 확산',
     '매출 실적과 판매 계획입니다. 전년도 339.8억 원, 올해 330억 원, 내년 400억 원을 추정합니다. 경남 거점 증분 매출은 2027년 8.5억, 2028년 18억 원이 목표입니다. 판매 경로는 정부 실증 컨소시엄으로 진입하고, 실증 결과를 카세트형 모듈과 구독형 SaaS로 카탈로그에 등재한 뒤, 영풍전자 협력사 200여 개사, KAI·조선 1차 협력사로 수평 확산하는 3단계입니다.');
   const at = img3d(s, 'bars', 0.4, 1.35, 3.6);
   const lb = [['33,979', '전년도 (2025)'], ['33,000', '당해년 (추정)'], ['40,000', '차년도 (추정)']];
@@ -455,11 +477,11 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
   card(s, 0.5, 4.62, 3.5, 0.45, { hl: true, fill: 'FFFFFF' });
   T(s, '경남 거점 증분 매출 목표   2027년 8.5억 원  →  2028년 18억 원', 0.6, 4.62, 3.3, 0.45, { fontSize: 8.5, bold: true, color: C.gold, valign: 'middle', align: 'center' });
   // right: 판매경로 flow
-  T(s, '판매 경로', 4.3, 1.22, 3, 0.26, { fontSize: 10.5, bold: true, color: C.title });
+  sec(s, '판매 경로', 4.3, 1.22, 3);
   const fl = [['①', '정부 실증사업 컨소시엄', '지역 앵커기업 + 대학 · TP + 당사'], ['②', '카탈로그 등재', '카세트형 모듈 · 구독형 SaaS (AX 실증산단)'], ['③', '앵커기업 협력사 수평 확산', '영풍전자 협력사 200여 개사, KAI · 조선 1차 협력사']];
   fl.forEach(([n, h, d], i) => {
     const x = 4.3 + i * 1.75;
-    s.addShape(pptx.ShapeType.homePlate, { x, y: 1.52, w: 1.68, h: 0.92, fill: { color: i === 2 ? 'C8963C' : (i ? '3D617C' : C.navy) }, line: { color: 'FFFFFF', width: 0 } });
+    s.addShape(pptx.ShapeType.homePlate, { x, y: 1.52, w: 1.68, h: 0.92, fill: { color: i === 2 ? 'B8860B' : (i ? C.steel : C.navy) }, line: { color: 'FFFFFF', width: 0 } });
     T(s, `${n} ${h}`, x + 0.1, 1.56, 1.35, 0.42, { fontSize: 8, bold: true, color: 'FFFFFF', valign: 'middle' });
     T(s, d, x + 0.1, 1.96, 1.35, 0.44, { fontSize: 7, color: 'E1EBF7' });
   });
@@ -478,7 +500,7 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 17. 청년고용 · 노동시간 ===============
 {
-  const s = body('Ⅵ. 청년고용 창출 및 노동시간 단축', '현지 채용 → 본사 4~8주 교육 → 창원 배치 : 지역 청년을 제조AI 전문인력으로',
+  const s = body('Ⅵ. 청년고용 · 노동시간 — 지역 청년을 {제조AI 전문인력}으로', '현지 채용 → 본사 4~8주 교육 → 창원 배치 : 지역 청년을 제조AI 전문인력으로',
     '청년고용입니다. 당사는 AI 인력 139명, 청년 비율 34%로 청년 고용 비중이 높은 기업입니다. 입주 후 2027년 현지 채용 3명 중 엔지니어 2명은 피지컬AI 과제의 청년채용 인력으로 최소 4년간 인건비가 충당되며, 현장 PM 1명을 더합니다. 창원대, 경남대, 창원시 이노베이션 아카데미 인재풀에서 우선 채용합니다. 노동시간 측면에서는 주 52시간 상한을 준수하고, 출장 기반 대응을 상주 거점으로 전환해 장거리 이동시간을 줄입니다.');
   const at = img3d(s, 'phases', 0.45, 1.3, 4.1);
   const [ax, ay] = at('A'), [bx, by] = at('B');
@@ -501,20 +523,20 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
 
 // =============== 18. 소요자금 ===============
 {
-  const s = body('Ⅶ. 소요자금 조달계획', '3개년 소요자금 1,294백만원 — 정책자금(과제비) 520 + 본사 자기자금 774  (단위 : 백만원)',
+  const s = body('Ⅶ. 소요자금 — 3개년 {1,294백만원}, 외부 차입 없이 조달', '3개년 소요자금 1,294백만원 — 정책자금(과제비) 520 + 본사 자기자금 774  (단위 : 백만원)',
     '소요자금 조달계획입니다. 1차년도 2027년 4.18억 원, 2028년과 2029년 각각 4.38억 원이 소요되며, 운전자금이 가장 큰 비중입니다. 조달은 피지컬AI 과제비로 현지 엔지니어 2인 인건비를 충당하고, 나머지는 본사 자기자금으로 충당합니다. 2026년 상반기 본사 자기자본 총계는 295억 원 수준으로 조달 여력이 충분합니다.');
   const yrs = [['1차년도 (2027)', { 사업장: 32, 유형고정자산: 31, 운전자금: 355 }, 418, 120, 298, '사업장: 운영 22 · 시설 6 · 사무실임대 4 / 유형고정자산: 차량운반구 31 / 운전자금: 기타운전자금 355'],
     ['2차년도 (2028)', { 사업장: 26, 유형고정자산: 31, 운전자금: 381 }, 438, 200, 238, ''],
     ['3차년도 (2029)', { 사업장: 26, 유형고정자산: 31, 운전자금: 381 }, 438, 200, 238, '']];
   s.addChart(pptx.ChartType.bar, ['사업장', '유형고정자산', '운전자금'].map(k => ({ name: k, labels: yrs.map(y => y[0]), values: yrs.map(y => y[1][k]) })), {
-    x: 0.4, y: 1.2, w: 4.4, h: 3.0, barDir: 'col', barGrouping: 'stacked', chartColors: ['D6A756', '3D617C', '18334F'],
+    x: 0.4, y: 1.2, w: 4.4, h: 3.0, barDir: 'col', barGrouping: 'stacked', chartColors: ['E2B23A', '3C6791', '0E2240'],
     showLegend: true, legendPos: 'b', legendFontSize: 8, legendFontFace: F, catAxisLabelFontSize: 8.5, catAxisLabelFontFace: F, valAxisHidden: true, valGridLine: { style: 'none' },
     showValue: true, dataLabelFontSize: 8, dataLabelFontFace: F, dataLabelColor: 'FFFFFF', barGapWidthPct: 70 });
   yrs.forEach((y, i) => T(s, `합계 ${y[2]}`, 0.95 + i * 1.33, 1.15, 1.2, 0.24, { fontSize: 9.5, bold: true, color: C.gold, align: 'center' }));
   const rows = yrs.map(y => [y[0], String(y[2]), String(y[3]), String(y[4]), String(y[2])]);
   s.addTable([[th('구분'), th('소요자금'), th('정책자금지원\n(과제비)'), th('B/S상 가용자금\n(본사 자기자금)'), th('조달 합계')],
     ...rows.map(r => r.map((c, j) => ({ text: c, options: { align: 'center', bold: j === 0 || j === 4, color: j === 4 ? C.gold : C.body } }))),
-    ['3개년 합계', '1,294', '520', '774', '1,294'].map((c, j) => ({ text: c, options: { align: 'center', bold: true, color: C.title, fill: { color: 'E8EEF5' } } }))],
+    ['3개년 합계', '1,294', '520', '774', '1,294'].map((c, j) => ({ text: c, options: { align: 'center', bold: true, color: C.title, fill: { color: C.pale } } }))],
   { x: 5.0, y: 1.22, ...tableOpts([1.2, 0.75, 0.85, 1.0, 0.7], { fontSize: 8.5, rowH: 0.36 }) });
   card(s, 5.0, 3.25, 4.5, 1.8, { hl: true });
   icon(s, 'books', 5.1, 3.33, 0.38);
@@ -523,17 +545,17 @@ const th = (t) => ({ text: t, options: { bold: true, color: C.title, fill: { col
   T(s, '※ 3개년 합계는 사업계획서 연도별 금액의 단순 합산', 0.5, 4.98, 4.3, 0.2, { fontSize: 7, color: C.sub });
 }
 
-// =============== 19. CLOSING ===============
+// =============== CLOSING ===============
 {
   const s = pptx.addSlide(); pageNo++;
   s.background = { path: 'img/end_bg.jpg' };
-  T(s, 'KONAN TECHNOLOGY', 0.57, 0.5, 4, 0.3, { fontSize: 11, color: C.gold2, bold: true, charSpacing: 4 });
-  s.addShape(pptx.ShapeType.line, { x: 0.57, y: 0.85, w: 0.6, h: 0, line: { color: C.gold2, width: 1.5 } });
-  T(s, 'THANK YOU', 0.57, 1.59, 4.2, 0.31, { fontSize: 11.25, color: 'D9B675' });
-  T(s, '감사합니다', 0.57, 2.1, 5.3, 0.8, { fontSize: 36.75, bold: true, color: 'FFFFFF', valign: 'middle' });
-  T(s, '제조 특화 온프레미스 생성형AI · 암묵지 지식화 플랫폼\n(Konan Maestro) 기반 경남권 제조AX 서비스', 0.57, 3.1, 5.6, 0.7, { fontSize: 14, color: 'E1EBF7' });
-  T(s, '㈜코난테크놀로지', 0.57, 4.15, 4.9, 0.32, { fontSize: 15, color: 'FFFFFF' });
-  T(s, [{ text: '염종학 이사 (국방·전략사업부)  [ e-mail : ' }, { text: 'jonghak.yeom@konantech.com', options: { hyperlink: { url: 'mailto:jonghak.yeom@konantech.com' }, color: 'C0D1E6' } }, { text: ' ]' }], 0.57, 4.59, 6, 0.31, { fontSize: 12, color: 'C0D1E6' });
+  T(s, 'THANK YOU', 0.6, 1.25, 4, 0.3, { fontSize: 10.5, color: C.gold2, charSpacing: 3 });
+  T(s, rich('감사{합니다}', 'FFFFFF', C.gold2), 0.6, 1.6, 6, 1.0, { fontSize: 46, bold: true, valign: 'middle' });
+  s.addShape(pptx.ShapeType.rect, { x: 0.6, y: 2.75, w: 0.6, h: 0.03, fill: { color: C.gold2 }, line: { color: C.gold2, width: 0 } });
+  T(s, [{ text: '"제조의 지식을 가장 깊이 이해하는 AI 기업"', options: { color: 'FFFFFF', bold: true } }, { text: '\n그 첫걸음은 경남(창원)의 현장에서 시작합니다', options: { color: 'B7C3D3' } }], 0.6, 2.95, 5.5, 0.6, { fontSize: 11, lineSpacingMultiple: 1.2 });
+  T(s, '㈜코난테크놀로지', 0.6, 4.05, 4.9, 0.3, { fontSize: 13, color: 'FFFFFF', bold: true });
+  T(s, [{ text: '염종학 이사 (국방 · 전략사업부)   ' }, { text: 'jonghak.yeom@konantech.com', options: { hyperlink: { url: 'mailto:jonghak.yeom@konantech.com' }, color: 'C0D1E6' } }, { text: '   010-9082-1522' }], 0.6, 4.4, 7, 0.28, { fontSize: 10, color: 'C0D1E6' });
+  T(s, '경남인공지능혁신본부 입주신청 · 사업계획 발표  |  2026. 10', 0.6, 4.95, 6, 0.22, { fontSize: 8, color: '8E99A5' });
   s.addNotes('감사합니다. 질문 받겠습니다.');
 }
 
