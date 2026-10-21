@@ -675,29 +675,68 @@ const TH = (t) => ({ text: t, options: { bold: true, color: C.white, fill: { col
   s.addNotes("[55:00~56:30] 구체 금액은 회사마다 달라서 일반화하지 않습니다. 대신 산식과 기준선의 중요성을 강조합니다. 정부지원 비율(영풍전자 약 70%)은 다음 세션 조윤성 박사님의 정부지원 강의로 자연스럽게 연결합니다.");
 }
 
-// ───────────────────────── 27. Ⅴ-5 도입 로드맵
+// ───────────────────────── 27. Ⅴ-5 도입 로드맵 (준비도 분기 흐름도)
 {
-  const s = base("Ⅴ. AX 도입 우선순위 결정", "기업 AX 도입 4단계 로드맵", "진단 → PoC → 실증·확대 → 자립·확산");
-  const st = [
-    ["STEP 1", "진단", "1~2개월", ["후보 업무 목록화 · 스코어카드 평가", "기준선(시간·공수·불량) 측정", "보유 데이터 목록 작성", "숙련자 명단 · 인터뷰 대상 선정"]],
-    ["STEP 2", "PoC", "3~6개월", ["업무 1건 · 공정 1건으로 한정", "용어사전 · 최소 온톨로지", "정보제공형 Agent (STEP 1 수준)", "HITL 검수 체계 구축"]],
-    ["STEP 3", "실증 · 확대", "6~12개월", ["KPI 검증 → 투자심의", "판단지원형 Agent로 고도화", "타 공정 · 사업장 확대", "정부 지원사업 연계"]],
-    ["STEP 4", "자립 · 확산", "이후", ["LLMOps · AgentOps 운영 내재화", "현업이 Agent Builder로 직접 제작", "협력사 · 동종업계 확산", "지식 자산 지속 축적"]],
-  ];
-  st.forEach((t, i) => {
-    const x = 0.5 + i * 3.12;
-    s.addShape(pptx.ShapeType.rect, { x, y: 1.85, w: 2.95, h: 1.05, fill: { color: i === 0 ? C.panel2 : C.panel }, line: { color: i === 0 ? C.accent2 : C.accent, width: 1.5 } });
-    s.addText(t[0], { x, y: 1.88, w: 2.95, h: 0.35, fontFace: F, fontSize: 11, bold: true, color: C.accent, align: "center" });
-    s.addText(t[1], { x, y: 2.2, w: 2.95, h: 0.4, fontFace: F, fontSize: 17, bold: true, color: C.title, align: "center" });
-    s.addText(t[2], { x, y: 2.58, w: 2.95, h: 0.3, fontFace: F, fontSize: 10.5, color: C.accent2, align: "center" });
-    card(s, x, 3.0, 2.95, 2.85, null, t[3], { size: 11.5, gap: 8, bar: false });
-    icon(s, ["docsearch", "flag", "growth", "expand"][i], x + 2.0, i === 3 ? 5.15 : 4.95, i === 3 ? 0.85 : 0.8);
-    if (i < 3) arrowR(s, x + 2.96, 2.22, 0.15, 0.3);
+  const s = base("Ⅴ. AX 도입 우선순위 결정", "기업 AX 도입 4단계 로드맵", "진단에서 준비도를 확인하고, 준비가 덜 되었으면 교육을 거쳐 다시 진단으로 돌아옵니다");
+  const LC = C.accent;
+  // 연결선: 방향(dir) r=오른쪽, l=왼쪽, d=아래, u=위 / arrow=끝 화살표
+  const hline = (x1, x2, y, arrow = true) => {
+    const left = x2 < x1;
+    s.addShape(pptx.ShapeType.line, { x: Math.min(x1, x2), y, w: Math.abs(x2 - x1), h: 0, flipH: left, line: { color: LC, width: 1.5, endArrowType: arrow ? "triangle" : undefined } });
+  };
+  const vline = (x, y1, y2) => s.addShape(pptx.ShapeType.line, { x, y: Math.min(y1, y2), w: 0, h: Math.abs(y2 - y1), flipV: y2 < y1, line: { color: LC, width: 1.5 } });
+  const step = (x, y, w, h, title, size = 17) => {
+    s.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color: C.navy }, line: { color: C.navy, width: 0 } });
+    s.addText(title, { x, y, w, h, fontFace: F, fontSize: size, bold: true, color: C.white, align: "center", valign: "middle" });
+  };
+  const cap = (x, y, w, t) => s.addText(t, { x, y, w, h: 0.42, fontFace: F, fontSize: 10, color: C.muted, align: "center", valign: "top" });
+  const lbl = (x, y, t) => s.addText(t, { x, y, w: 0.6, h: 0.32, fontFace: F, fontSize: 13, bold: true, color: C.accent2 });
+
+  // ① 메인 흐름
+  const rowY = 2.1, rowH = 0.72, cy = rowY + rowH / 2;
+  step(0.5, rowY, 1.75, rowH, "Step1 진단");
+  cap(0.4, rowY + 0.8, 1.95, "업무·데이터·숙련자 진단\n스코어카드 · 기준선 측정");
+  // 판단: AX 도입 준비
+  const dx = 2.75, dw = 2.25, dh = 1.4, dcx = dx + dw / 2, dTop = cy - dh / 2, dBot = cy + dh / 2;
+  hline(2.25, dx, cy);
+  s.addShape(pptx.ShapeType.diamond, { x: dx, y: dTop, w: dw, h: dh, fill: { color: C.panel2 }, line: { color: C.navy, width: 1.25 } });
+  s.addText("AX 도입 준비가\n되어 있는가?", { x: dx + 0.25, y: dTop, w: dw - 0.5, h: dh, fontFace: F, fontSize: 12, bold: true, color: C.title, align: "center", valign: "middle" });
+  lbl(dx + dw + 0.08, cy - 0.38, "Yes");
+  hline(dx + dw, 5.75, cy);
+  step(5.75, rowY, 1.9, rowH, "Step2 PoC");
+  cap(5.65, rowY + 0.8, 2.1, "업무 1건 PoC\n정보제공형 Agent (3~6개월)");
+  hline(7.65, 8.05, cy);
+  step(8.05, rowY, 2.1, rowH, "Step3 실증확대");
+  cap(7.95, rowY + 0.8, 2.3, "KPI 검증 → 투자심의\n판단지원형 고도화 (6~12개월)");
+  hline(10.15, 10.55, cy);
+  step(10.55, rowY, 2.28, rowH, "Step4 자립확산");
+  cap(10.45, rowY + 0.8, 2.48, "운영 내재화 · 현업 Agent 제작\n협력사 · 동종업계 확산");
+
+  // ② No 분기: 교육 트랙
+  lbl(dcx - 0.62, dBot - 0.02, "No");
+  const r1 = 4.3, r2 = 5.55, sdw = 1.95, sdh = 1.0, sdx = 4.25, bx = 6.75, bw = 3.65, bh = 0.85;
+  vline(dcx, dBot, r2);
+  [[r1, "임직원\n교육이 필요한가?", "Step1-1 임직원 대상 업무자동화\nAI 활용 환급 / 비환급 교육"], [r2, "CEO\n교육이 필요한가?", "Step1-2 제조암묵지 AI\n최고경영자과정 [비환급]"]].forEach(([ry, q, t]) => {
+    hline(dcx, sdx, ry);
+    s.addShape(pptx.ShapeType.diamond, { x: sdx, y: ry - sdh / 2, w: sdw, h: sdh, fill: { color: "EEF1F5" }, line: { color: C.line, width: 1 } });
+    s.addText(q, { x: sdx + 0.15, y: ry - sdh / 2, w: sdw - 0.3, h: sdh, fontFace: F, fontSize: 10.5, color: C.title, align: "center", valign: "middle" });
+    lbl(sdx + sdw + 0.05, ry - 0.4, "Yes");
+    hline(sdx + sdw, bx, ry);
+    s.addShape(pptx.ShapeType.rect, { x: bx, y: ry - bh / 2, w: bw, h: bh, fill: { color: C.navy }, line: { color: C.navy, width: 0 } });
+    s.addText(t, { x: bx + 0.15, y: ry - bh / 2, w: bw - 0.2, h: bh, fontFace: F, fontSize: 12.5, bold: true, color: C.white, valign: "middle" });
+    hline(bx + bw, 10.8, ry, false);
   });
-  s.addText("※ 기간은 일반적인 제안이며, 업무 범위와 데이터 상태에 따라 달라집니다.", { x: 0.5, y: 5.95, w: 12, h: 0.3, fontFace: F, fontSize: 10.5, color: C.dim });
-  keyMsg(s, "오늘 돌아가서 할 일은 STEP 1 하나입니다: 후보 업무 3개를 적고, 기준선을 재는 것.");
+  // ③ 교육 후 재진단 (환류)
+  const loopY = 3.55;
+  vline(10.8, r2, loopY);
+  hline(10.8, dcx + 0.2, loopY);
+  s.addText("↺ 교육 이수 후 재진단", { x: 7.9, y: loopY + 0.03, w: 2.8, h: 0.3, fontFace: F, fontSize: 10, color: C.accent, align: "right" });
+
+  icon(s, "stairs", 11.05, 4.2, 1.8);
+  s.addText("※ 기간은 일반적인 제안이며, 업무 범위와 데이터 상태에 따라 달라집니다.", { x: 0.5, y: 6.08, w: 9, h: 0.3, fontFace: F, fontSize: 10, color: C.dim });
+  keyMsg(s, "준비가 되었으면 바로 PoC로, 아니면 임직원·CEO 교육으로 준비도를 높인 뒤 다시 진단합니다.");
   source(s, "영풍전자 단계적 확산 계획 · 포항 AX실증산단 연차별 계획을 바탕으로 재구성");
-  s.addNotes("[56:30~58:00] 로드맵의 첫 단계는 비용이 거의 들지 않습니다. 후보 업무 목록, 기준선 측정, 보유 데이터 목록, 숙련자 명단. 이 네 가지만 있으면 정부 지원사업 신청서의 절반이 준비됩니다.");
+  s.addNotes("[56:30~58:00] Step1 진단에서 'AX 도입 준비가 되어 있는가'를 먼저 봅니다. 준비가 되었으면 바로 업무 1건 PoC로 갑니다. 준비가 안 되었다면 두 갈래 교육이 있습니다. 임직원은 업무자동화 AI 활용 교육(환급/비환급), 경영진은 제조암묵지 AI 최고경영자과정(비환급). 교육을 마치면 다시 진단으로 돌아와 PoC 여부를 판단합니다.");
 }
 
 // ───────────────────────── 28. CEO 체크리스트
